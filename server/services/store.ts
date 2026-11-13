@@ -39,7 +39,23 @@ export function loadStore(): StoreState {
     if (!Array.isArray(parsed.fields) || parsed.fields.length === 0) {
       return { fields: INITIAL_FIELDS, activities: INITIAL_ACTIVITIES };
     }
-    return parsed;
+    const seedById = new Map(INITIAL_FIELDS.map((f) => [f.id, f]));
+    const hydratedFields = parsed.fields.map((f) => {
+      if (!f.soil.om_history || f.soil.om_history.length === 0) {
+        const seeded = seedById.get(f.id);
+        if (seeded?.soil.om_history) {
+          return {
+            ...f,
+            soil: {
+              ...f.soil,
+              om_history: seeded.soil.om_history,
+            },
+          };
+        }
+      }
+      return f;
+    });
+    return { ...parsed, fields: hydratedFields };
   } catch {
     return { fields: INITIAL_FIELDS, activities: INITIAL_ACTIVITIES };
   }

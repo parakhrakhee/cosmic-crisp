@@ -1,0 +1,270 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable primitive helpers
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'seededDemoFields', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'seededDemoFields', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == userId
+        && data.seededDemoFields is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFieldParcel(data, fieldId) {
+      return data.keys().hasAll([
+          'id',
+          'ownerId',
+          'name',
+          'location_label',
+          'geometryRings',
+          'centroid_lat',
+          'centroid_lon',
+          'acreage',
+          'area_auto_calc',
+          'notes',
+          'yields',
+          'analysis_status',
+          'previous_crops',
+          'soil',
+          'telemetry',
+          'created_at',
+          'updated_at',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'id',
+          'ownerId',
+          'name',
+          'location_label',
+          'geometryRings',
+          'centroid_lat',
+          'centroid_lon',
+          'acreage',
+          'area_auto_calc',
+          'notes',
+          'yields',
+          'analysis_status',
+          'previous_crops',
+          'soil',
+          'telemetry',
+          'created_at',
+          'updated_at',
+          'createdAt',
+          'updatedAt'
+        ])
+        && isValidId(data.id)
+        && data.id == fieldId
+        && isValidId(data.ownerId)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 140
+        && data.location_label is string && data.location_label.size() <= 160
+        && data.geometryRings is list && data.geometryRings.size() >= 1 && data.geometryRings.size() <= 10 && data.geometryRings[0] is map
+        && data.centroid_lat is number && data.centroid_lat >= -90 && data.centroid_lat <= 90
+        && data.centroid_lon is number && data.centroid_lon >= -180 && data.centroid_lon <= 180
+        && data.acreage is number && data.acreage > 0 && data.acreage <= 1000000
+        && data.area_auto_calc is bool
+        && data.notes is string && data.notes.size() <= 2000
+        && data.yields is list && data.yields.size() <= 50 && (data.yields.size() == 0 || data.yields[0] is map)
+        && data.analysis_status is string && data.analysis_status.size() <= 16 && (data.analysis_status == 'pending' || data.analysis_status == 'analyzed')
+        && data.previous_crops is list && data.previous_crops.size() >= 1 && data.previous_crops.size() <= 10 && data.previous_crops[0] is string && data.previous_crops[0].size() <= 64
+        && data.soil is map
+        && data.telemetry is map
+        && data.created_at is string && data.created_at.size() <= 64
+        && data.updated_at is string && data.updated_at.size() <= 64
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isModifyFieldDetailsAction() {
+      return incoming().diff(existing()).affectedKeys().hasOnly([
+        'name',
+        'location_label',
+        'geometryRings',
+        'centroid_lat',
+        'centroid_lon',
+        'acreage',
+        'area_auto_calc',
+        'notes',
+        'yields',
+        'analysis_status',
+        'previous_crops',
+        'soil',
+        'telemetry',
+        'updated_at',
+        'updatedAt'
+      ]);
+    }
+
+    function isSoilOverrideAction() {
+      return incoming().diff(existing()).affectedKeys().hasOnly([
+        'soil',
+        'previous_crops',
+        'updated_at',
+        'updatedAt'
+      ]);
+    }
+
+    function isAnalysisTransitionAction() {
+      return incoming().diff(existing()).affectedKeys().hasOnly([
+        'analysis_status',
+        'previous_crops',
+        'telemetry',
+        'updated_at',
+        'updatedAt'
+      ]);
+    }
+
+    function isValidFieldActivity(data, fieldId, activityId) {
+      return data.keys().hasAll([
+          'id',
+          'ownerId',
+          'field_id',
+          'activity_type',
+          'crop_name',
+          'date',
+          'notes',
+          'synced',
+          'created_at',
+          'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'id',
+          'ownerId',
+          'field_id',
+          'activity_type',
+          'crop_name',
+          'date',
+          'notes',
+          'n_applied_lbs_acre',
+          'synced',
+          'created_at',
+          'createdAt'
+        ])
+        && isValidId(data.id)
+        && data.id == activityId
+        && isValidId(data.ownerId)
+        && isValidId(data.field_id)
+        && data.field_id == fieldId
+        && data.activity_type is string && data.activity_type.size() >= 1 && data.activity_type.size() <= 48
+        && data.crop_name is string && data.crop_name.size() >= 1 && data.crop_name.size() <= 120
+        && data.date is string && data.date.size() >= 4 && data.date.size() <= 32
+        && data.notes is string && data.notes.size() <= 1000
+        && (!('n_applied_lbs_acre' in data) || (data.n_applied_lbs_acre is number && data.n_applied_lbs_acre >= 0 && data.n_applied_lbs_acre <= 1000))
+        && data.synced is bool
+        && data.created_at is string && data.created_at.size() <= 64
+        && data.createdAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['seededDemoFields', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /fields/{fieldId} {
+      allow get: if isSignedIn()
+        && isValidId(fieldId)
+        && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn()
+        && isValidId(fieldId)
+        && isValidFieldParcel(incoming(), fieldId)
+        && incoming().ownerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(fieldId)
+        && isValidFieldParcel(incoming(), fieldId)
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (isModifyFieldDetailsAction() || isSoilOverrideAction() || isAnalysisTransitionAction());
+      allow delete: if isSignedIn()
+        && isValidId(fieldId)
+        && existing().ownerId == request.auth.uid;
+
+      match /activities/{activityId} {
+        allow get: if isSignedIn()
+          && isValidId(fieldId)
+          && isValidId(activityId)
+          && existing().ownerId == request.auth.uid
+          && get(/databases/$(database)/documents/fields/$(fieldId)).data.ownerId == request.auth.uid;
+        allow list: if isSignedIn()
+          && resource.data.ownerId == request.auth.uid;
+        allow create: if isSignedIn()
+          && isValidId(fieldId)
+          && isValidId(activityId)
+          && isValidFieldActivity(incoming(), fieldId, activityId)
+          && incoming().ownerId == request.auth.uid
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/fields/$(fieldId))
+          && get(/databases/$(database)/documents/fields/$(fieldId)).data.ownerId == request.auth.uid;
+        allow update: if isSignedIn()
+          && isValidId(fieldId)
+          && isValidId(activityId)
+          && isValidFieldActivity(incoming(), fieldId, activityId)
+          && existing().ownerId == request.auth.uid
+          && incoming().ownerId == existing().ownerId
+          && incoming().id == existing().id
+          && incoming().field_id == existing().field_id
+          && incoming().createdAt == existing().createdAt
+          && get(/databases/$(database)/documents/fields/$(fieldId)).data.ownerId == request.auth.uid
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'activity_type',
+            'crop_name',
+            'date',
+            'notes',
+            'n_applied_lbs_acre',
+            'synced'
+          ]);
+        allow delete: if isSignedIn()
+          && isValidId(fieldId)
+          && isValidId(activityId)
+          && existing().ownerId == request.auth.uid
+          && get(/databases/$(database)/documents/fields/$(fieldId)).data.ownerId == request.auth.uid;
+      }
+    }
+  }
+}

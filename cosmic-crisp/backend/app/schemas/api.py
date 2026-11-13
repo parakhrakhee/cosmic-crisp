@@ -14,6 +14,15 @@ class GeoJsonPolygonDTO(BaseModel):
         return v
 
 
+class SoilHistoryPointDTO(BaseModel):
+    season_year: int
+    season_label: str
+    organic_matter_pct: float
+    ph: float
+    crop_grown: str
+    source: str
+
+
 class SoilProfileDTO(BaseModel):
     ph: float
     organic_matter_pct: float
@@ -27,6 +36,7 @@ class SoilProfileDTO(BaseModel):
     is_manual_override: bool
     mukey: Optional[str] = None
     updated_at: str
+    om_history: List[SoilHistoryPointDTO] = PydanticField(default_factory=list)
 
 
 class SoilOverrideRequest(BaseModel):

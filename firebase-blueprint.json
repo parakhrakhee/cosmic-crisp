@@ -1,0 +1,258 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Tracks authenticated grower workspace initialization and demo seeding state.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Authentication user UID."
+        },
+        "seededDemoFields": {
+          "type": "boolean",
+          "description": "Whether initial demo parcels have been seeded for this user."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last update timestamp."
+        }
+      },
+      "required": ["uid", "seededDemoFields", "createdAt", "updatedAt"]
+    },
+    "FieldParcel": {
+      "title": "FieldParcel",
+      "description": "Precision agriculture field parcel with geometry rings, soil profile, climate telemetry, notes, and yield records.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique parcel document ID."
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Authenticated Firebase UID owning this field."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 140,
+          "description": "Field display name."
+        },
+        "location_label": {
+          "type": "string",
+          "maxLength": 160,
+          "description": "County, state, or coordinate region label."
+        },
+        "geometryRings": {
+          "type": "array",
+          "description": "Native Firestore map-list representation of GeoJSON polygon rings."
+        },
+        "centroid_lat": {
+          "type": "number",
+          "description": "Polygon centroid latitude in decimal degrees."
+        },
+        "centroid_lon": {
+          "type": "number",
+          "description": "Polygon centroid longitude in decimal degrees."
+        },
+        "acreage": {
+          "type": "number",
+          "description": "Field area in acres."
+        },
+        "area_auto_calc": {
+          "type": "boolean",
+          "description": "Whether area is automatically derived from GeoJSON polygon."
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Agronomic notes entered by the user."
+        },
+        "yields": {
+          "type": "array",
+          "description": "Historical per-year yield measurements."
+        },
+        "analysis_status": {
+          "type": "string",
+          "enum": ["pending", "analyzed"],
+          "maxLength": 16,
+          "description": "Whether the field is saved pre-analysis or has completed 4-stage analysis."
+        },
+        "previous_crops": {
+          "type": "array",
+          "description": "Prior crops grown on the field, most recent first."
+        },
+        "soil": {
+          "type": "object",
+          "description": "USDA NRCS or manual lab override soil profile map."
+        },
+        "telemetry": {
+          "type": "object",
+          "description": "NASA POWER daily meteorological summary map."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64,
+          "description": "ISO-8601 creation timestamp."
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64,
+          "description": "ISO-8601 last update timestamp."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server last update timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "location_label",
+        "geometryRings",
+        "centroid_lat",
+        "centroid_lon",
+        "acreage",
+        "area_auto_calc",
+        "notes",
+        "yields",
+        "analysis_status",
+        "previous_crops",
+        "soil",
+        "telemetry",
+        "created_at",
+        "updated_at",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "FieldActivity": {
+      "title": "FieldActivity",
+      "description": "Seasonal agronomic operation logged against a field parcel.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Activity entry ID."
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner UID matching parent FieldParcel."
+        },
+        "field_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Parent field ID."
+        },
+        "activity_type": {
+          "type": "string",
+          "enum": [
+            "Planting",
+            "Soil Sample",
+            "Cover Crop Termination",
+            "Fertilizer Application",
+            "Irrigation",
+            "Field Observation"
+          ],
+          "maxLength": 48,
+          "description": "Agronomic operation category."
+        },
+        "crop_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Associated crop name."
+        },
+        "date": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 32,
+          "description": "Operation date (YYYY-MM-DD)."
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Operation notes."
+        },
+        "n_applied_lbs_acre": {
+          "type": "number",
+          "description": "Optional nitrogen rate in lbs/acre."
+        },
+        "synced": {
+          "type": "boolean",
+          "description": "Cloud sync flag."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "maxLength": 64,
+          "description": "ISO-8601 creation timestamp."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server creation timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "field_id",
+        "activity_type",
+        "crop_name",
+        "date",
+        "notes",
+        "synced",
+        "created_at",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores per-user workspace seeding flag without PII."
+    },
+    "/fields/{fieldId}": {
+      "schema": { "$ref": "#/entities/FieldParcel" },
+      "description": "Stores user-owned agricultural field parcels added, modified, or deleted in Cosmic Crisp."
+    },
+    "/fields/{fieldId}/activities/{activityId}": {
+      "schema": { "$ref": "#/entities/FieldActivity" },
+      "description": "Stores field activity log entries scoped to the parent FieldParcel."
+    }
+  }
+}

@@ -28,6 +28,23 @@ export async function cacheFieldsOffline(fields: FieldRecord[]): Promise<void> {
   await offlineDb.fields.bulkPut(fields);
 }
 
+export async function replaceOfflineFields(fields: FieldRecord[]): Promise<void> {
+  await offlineDb.transaction('rw', offlineDb.fields, async () => {
+    await offlineDb.fields.clear();
+    if (fields.length > 0) {
+      await offlineDb.fields.bulkPut(fields);
+    }
+  });
+}
+
+export async function deleteOfflineField(fieldId: string): Promise<void> {
+  await offlineDb.transaction('rw', offlineDb.fields, offlineDb.rotations, offlineDb.activities, async () => {
+    await offlineDb.fields.delete(fieldId);
+    await offlineDb.rotations.delete(fieldId);
+    await offlineDb.activities.where('field_id').equals(fieldId).delete();
+  });
+}
+
 export async function getOfflineFields(): Promise<FieldRecord[]> {
   return offlineDb.fields.orderBy('updated_at').reverse().toArray();
 }

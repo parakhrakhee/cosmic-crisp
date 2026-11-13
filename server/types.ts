@@ -33,6 +33,15 @@ export interface CropSpec {
   description: string;
 }
 
+export interface SoilHistoryPoint {
+  season_year: number;
+  season_label: string;
+  organic_matter_pct: number;
+  ph: number;
+  crop_grown: string;
+  source: string;
+}
+
 export interface SoilProfile {
   ph: number;
   organic_matter_pct: number;
@@ -46,6 +55,7 @@ export interface SoilProfile {
   is_manual_override: boolean;
   mukey?: string;
   updated_at: string;
+  om_history?: SoilHistoryPoint[];
 }
 
 export interface MonthlyClimatePoint {
@@ -82,6 +92,13 @@ export interface GeoJsonPolygon {
   coordinates: number[][][];
 }
 
+export interface YieldRecord {
+  id: string;
+  year: number;
+  value: number | null;
+  unit: 't/ha' | 'bu/ac' | 'lb/ac' | 'ton/ac';
+}
+
 export interface FieldRecord {
   id: string;
   name: string;
@@ -90,6 +107,10 @@ export interface FieldRecord {
   centroid_lat: number;
   centroid_lon: number;
   acreage: number;
+  area_auto_calc?: boolean;
+  notes?: string;
+  yields?: YieldRecord[];
+  analysis_status?: 'pending' | 'analyzed';
   previous_crops: string[]; // Most recent first: [lastYear, twoYearsAgo, ...]
   soil: SoilProfile;
   telemetry: ClimateTelemetry;

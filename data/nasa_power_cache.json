@@ -1,0 +1,121 @@
+{
+  "43.5_-116.0": {
+    "telemetry": {
+      "grid_lat": 43.5,
+      "grid_lon": -116,
+      "cache_key": "43.5_-116.0",
+      "cache_hit": false,
+      "cached_at": "2026-11-13T19:12:27.177Z",
+      "expires_at": "2026-11-14T19:12:27.177Z",
+      "data_source": "Climatology Fallback",
+      "gdd_85th_percentile": 1357,
+      "frost_free_days": 138,
+      "annual_precip_mm": 480,
+      "growing_season_precip_mm": 211,
+      "mean_et0_mm_day": 2.54,
+      "et0_method": "FAO-56 Hargreaves Computed",
+      "mean_t_min_c": 4.3,
+      "mean_t_max_c": 15.3,
+      "elevation_m": 832,
+      "monthly_series": [
+        {
+          "month": "Jan",
+          "t_min_c": -6.7,
+          "t_max_c": 4.3,
+          "precip_mm": 26,
+          "et0_mm": 20,
+          "gdd_c": 0
+        },
+        {
+          "month": "Feb",
+          "t_min_c": -5.2,
+          "t_max_c": 5.8,
+          "precip_mm": 28,
+          "et0_mm": 31,
+          "gdd_c": 0
+        },
+        {
+          "month": "Mar",
+          "t_min_c": -1.2,
+          "t_max_c": 9.8,
+          "precip_mm": 33,
+          "et0_mm": 53,
+          "gdd_c": 0
+        },
+        {
+          "month": "Apr",
+          "t_min_c": 4.3,
+          "t_max_c": 15.3,
+          "precip_mm": 40,
+          "et0_mm": 87,
+          "gdd_c": 80
+        },
+        {
+          "month": "May",
+          "t_min_c": 9.8,
+          "t_max_c": 20.8,
+          "precip_mm": 47,
+          "et0_mm": 122,
+          "gdd_c": 162
+        },
+        {
+          "month": "Jun",
+          "t_min_c": 13.9,
+          "t_max_c": 24.9,
+          "precip_mm": 52,
+          "et0_mm": 145,
+          "gdd_c": 282
+        },
+        {
+          "month": "Jul",
+          "t_min_c": 15.3,
+          "t_max_c": 26.3,
+          "precip_mm": 54,
+          "et0_mm": 147,
+          "gdd_c": 324
+        },
+        {
+          "month": "Aug",
+          "t_min_c": 13.9,
+          "t_max_c": 24.9,
+          "precip_mm": 52,
+          "et0_mm": 126,
+          "gdd_c": 282
+        },
+        {
+          "month": "Sep",
+          "t_min_c": 9.8,
+          "t_max_c": 20.8,
+          "precip_mm": 47,
+          "et0_mm": 91,
+          "gdd_c": 162
+        },
+        {
+          "month": "Oct",
+          "t_min_c": 4.3,
+          "t_max_c": 15.3,
+          "precip_mm": 40,
+          "et0_mm": 55,
+          "gdd_c": 80
+        },
+        {
+          "month": "Nov",
+          "t_min_c": -1.2,
+          "t_max_c": 9.8,
+          "precip_mm": 33,
+          "et0_mm": 30,
+          "gdd_c": 0
+        },
+        {
+          "month": "Dec",
+          "t_min_c": -5.2,
+          "t_max_c": 5.8,
+          "precip_mm": 28,
+          "et0_mm": 20,
+          "gdd_c": 0
+        }
+      ]
+    },
+    "storedAtMs": 1794597147178
+  }
+}

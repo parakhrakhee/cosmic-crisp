@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, ShieldCheck, ShieldAlert, Sprout } from 'lucide-react';
-import type { RotationGenerationResponse } from '../types';
+import type { FieldRecord, RotationGenerationResponse } from '../types';
 
 interface RotationCardsProps {
+  field?: FieldRecord | null;
   rotationData: RotationGenerationResponse | null;
   loading: boolean;
   fromOfflineCache: boolean;
 }
 
 export const RotationCards: React.FC<RotationCardsProps> = ({
+  field,
   rotationData,
   loading,
   fromOfflineCache,
@@ -38,6 +40,8 @@ export const RotationCards: React.FC<RotationCardsProps> = ({
     );
   }
 
+  const areaHa = field ? field.acreage / 2.47105381 : null;
+
   return (
     <div className="space-y-6">
       {/* Ranked Top 3 Plans */}
@@ -45,9 +49,16 @@ export const RotationCards: React.FC<RotationCardsProps> = ({
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold text-slate-900">
-              Top 3 Ranked 3-Year Rotation Plans
+              Top 3 Ranked 3-Year Rotation Plans · {field?.name || rotationData.field_name}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
+              {field && areaHa !== null ? (
+                <>
+                  {field.location_label} · {areaHa.toFixed(2)} ha ({field.acreage.toFixed(1)} ac) ·{' '}
+                  pH {field.soil.ph.toFixed(1)} · OM {field.soil.organic_matter_pct.toFixed(1)}% ·{' '}
+                  {field.soil.irrigated ? 'Irrigated' : 'Dryland'} ·{' '}
+                </>
+              ) : null}
               Prior Crop: {rotationData.previous_crop} · Beam Search Width: {rotationData.beam_width} ·{' '}
               {rotationData.passing_crops_count} of {rotationData.gate_audit_log.length} crop groups passed Stage 1 Gates
               {fromOfflineCache ? ' · Loaded from IndexedDB Offline Cache' : ''}
@@ -100,6 +111,11 @@ export const RotationCards: React.FC<RotationCardsProps> = ({
                       <span className="font-semibold text-slate-900">
                         ${plan.cumulative_3yr_net_margin_usd_acre.toFixed(0)}/ac
                       </span>
+                      {field && (
+                        <span className="text-slate-500 ml-1">
+                          (${Math.round(plan.cumulative_3yr_net_margin_usd_acre * field.acreage).toLocaleString()} field)
+                        </span>
+                      )}
                     </div>
                     <div>
                       <span className="text-slate-500 mr-1.5">Net N Bal</span>
@@ -119,6 +135,11 @@ export const RotationCards: React.FC<RotationCardsProps> = ({
                       <span className="font-semibold text-emerald-700">
                         ${plan.total_fertilizer_savings_usd_acre.toFixed(0)}/ac
                       </span>
+                      {field && (
+                        <span className="text-slate-500 ml-1">
+                          (${Math.round(plan.total_fertilizer_savings_usd_acre * field.acreage).toLocaleString()} field)
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -223,10 +244,12 @@ export const RotationCards: React.FC<RotationCardsProps> = ({
         >
           <div>
             <h3 className="text-sm font-semibold text-slate-900">
-              Stage 1 Hard Agronomic & Climate Gate Audit Log
+              Stage 1 Hard Agronomic & Climate Gate Audit Log · {field?.name || rotationData.field_name}
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Deterministic Boolean gate verification for soil pH, salinity, 85th-percentile GDD, frost-free buffer (+14d), and botanical disease-break rules
+              {field
+                ? `Evaluated for ${field.name}: pH ${field.soil.ph.toFixed(1)}, EC ${field.soil.salinity_dsm.toFixed(2)} dS/m, 85th-pct GDD ${field.telemetry.gdd_85th_percentile} °C·d, Frost-Free ${field.telemetry.frost_free_days}d (+14d buffer), Prior Crop ${rotationData.previous_crop}`
+                : 'Deterministic Boolean gate verification for soil pH, salinity, 85th-percentile GDD, frost-free buffer (+14d), and botanical disease-break rules'}
             </p>
           </div>
           {auditOpen ? (

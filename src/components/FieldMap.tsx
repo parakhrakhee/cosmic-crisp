@@ -1,30 +1,24 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import * as turf from '@turf/turf';
-import { Layers, MapPin, PenTool, Trash2, Upload, Check, X } from 'lucide-react';
-import type { CropSpec, FieldRecord, GeoJsonPolygon } from '../types';
+import { Layers, MapPin, PenTool, Trash2, Upload, X } from 'lucide-react';
+import type { FieldRecord, GeoJsonPolygon } from '../types';
 
 interface FieldMapProps {
   fields: FieldRecord[];
   selectedField: FieldRecord | null;
-  crops: CropSpec[];
   onSelectField: (fieldId: string) => void;
-  onCreateField: (payload: {
-    name: string;
-    location_label?: string;
-    geometry: GeoJsonPolygon;
-    previous_crops: string[];
-    irrigated: boolean;
-  }) => Promise<void>;
+  onPolygonCaptured: (geometry: GeoJsonPolygon, suggestedName?: string) => void;
   externalStartDrawSignal?: number;
 }
+
+const HA_PER_ACRE = 1 / 2.47105381;
 
 export const FieldMap: React.FC<FieldMapProps> = ({
   fields,
   selectedField,
-  crops,
   onSelectField,
-  onCreateField,
+  onPolygonCaptured,
   externalStartDrawSignal,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -39,13 +33,6 @@ export const FieldMap: React.FC<FieldMapProps> = ({
   const [pendingGeometry, setPendingGeometry] = useState<GeoJsonPolygon | null>(null);
   const [liveAcres, setLiveAcres] = useState<number>(0);
   const [liveCentroid, setLiveCentroid] = useState<[number, number] | null>(null);
-
-  // Save field form state
-  const [fieldName, setFieldName] = useState('');
-  const [locationLabel, setLocationLabel] = useState('');
-  const [prevCropId, setPrevCropId] = useState('corn');
-  const [irrigated, setIrrigated] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -268,9 +255,12 @@ export const FieldMap: React.FC<FieldMapProps> = ({
       ...drawCoords.map(([lat, lon]) => [lon, lat]),
       [drawCoords[0][1], drawCoords[0][0]],
     ];
-    setPendingGeometry({ type: 'Polygon', coordinates: [ring] });
+    const geom: GeoJsonPolygon = { type: 'Polygon', coordinates: [ring] };
     setIsDrawing(false);
+    setDrawCoords([]);
+    setPendingGeometry(null);
     setErrorMsg(null);
+    onPolygonCaptured(geom);
   };
 
   const handleGeoJsonUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -305,12 +295,9 @@ export const FieldMap: React.FC<FieldMapProps> = ({
       }
 
       const latLngs = geom.coordinates[0].map(([lon, lat]) => [lat, lon] as [number, number]);
-      setPendingGeometry(geom);
       setIsDrawing(false);
       setDrawCoords([]);
-      if (uploadedName && !fieldName) {
-        setFieldName(uploadedName);
-      }
+      setPendingGeometry(null);
 
       const map = mapRef.current;
       if (map) {
@@ -319,39 +306,12 @@ export const FieldMap: React.FC<FieldMapProps> = ({
           map.fitBounds(bounds, { padding: [44, 44], maxZoom: 15 });
         }
       }
+
+      onPolygonCaptured(geom, uploadedName || undefined);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Unable to parse GeoJSON file.');
     } finally {
       e.target.value = '';
-    }
-  };
-
-  const handleSaveField = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pendingGeometry) return;
-    if (!fieldName.trim()) {
-      setErrorMsg('Enter a field name before saving.');
-      return;
-    }
-
-    setSaving(true);
-    setErrorMsg(null);
-    try {
-      await onCreateField({
-        name: fieldName.trim(),
-        location_label: locationLabel.trim() || undefined,
-        geometry: pendingGeometry,
-        previous_crops: [prevCropId],
-        irrigated,
-      });
-      setPendingGeometry(null);
-      setDrawCoords([]);
-      setFieldName('');
-      setLocationLabel('');
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to create field.');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -366,12 +326,12 @@ export const FieldMap: React.FC<FieldMapProps> = ({
           {selectedField && !isDrawing && !pendingGeometry && (
             <span className="text-xs text-slate-500 font-mono tabular-nums">
               {selectedField.centroid_lat.toFixed(4)}°N, {selectedField.centroid_lon.toFixed(4)}°E ·{' '}
-              {selectedField.acreage.toFixed(1)} ac
+              {(selectedField.acreage * HA_PER_ACRE).toFixed(2)} ha ({selectedField.acreage.toFixed(1)} ac)
             </span>
           )}
           {(isDrawing || pendingGeometry) && (
             <span className="text-xs font-mono tabular-nums text-amber-700 font-medium">
-              Live Turf.js Area: {liveAcres.toFixed(2)} ac
+              Live Turf.js Area: {(liveAcres * HA_PER_ACRE).toFixed(2)} ha ({liveAcres.toFixed(2)} ac)
               {liveCentroid ? ` · Centroid ${liveCentroid[0]}°, ${liveCentroid[1]}°` : ''}
             </span>
           )}
@@ -450,8 +410,7 @@ export const FieldMap: React.FC<FieldMapProps> = ({
               disabled={drawCoords.length < 3}
               className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium bg-emerald-700 text-white rounded hover:bg-emerald-800 disabled:opacity-40 cursor-pointer"
             >
-              <Check className="w-3 h-3" />
-              Complete Boundary
+              Complete & Enter Details
             </button>
           </div>
         </div>
@@ -468,72 +427,6 @@ export const FieldMap: React.FC<FieldMapProps> = ({
         ref={mapContainerRef}
         className={`w-full h-[360px] ${isDrawing ? 'cursor-crosshair' : ''}`}
       />
-
-      {/* Save Drawn/Uploaded Parcel Form */}
-      {pendingGeometry && (
-        <form
-          onSubmit={handleSaveField}
-          className="p-5 border-t border-slate-200 bg-slate-50 grid grid-cols-1 md:grid-cols-5 gap-4 items-end"
-        >
-          <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-slate-700 mb-1">
-              Field Name
-            </label>
-            <input
-              type="text"
-              required
-              value={fieldName}
-              onChange={(e) => setFieldName(e.target.value)}
-              placeholder="e.g., Cedar Creek Quarter 12"
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-600"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">
-              Prior Season Crop
-            </label>
-            <select
-              value={prevCropId}
-              onChange={(e) => setPrevCropId(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-600"
-            >
-              {crops
-                .filter((c) => !c.is_cover_crop)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">
-              Water Regime
-            </label>
-            <label className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-300 rounded-md text-sm text-slate-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={irrigated}
-                onChange={(e) => setIrrigated(e.target.checked)}
-                className="accent-emerald-700"
-              />
-              Irrigated Parcel
-            </label>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full px-4 py-2 text-sm font-medium text-white bg-emerald-700 rounded-md hover:bg-emerald-800 disabled:opacity-50 transition-colors cursor-pointer whitespace-nowrap"
-            >
-              {saving ? 'Fetching NASA & USDA...' : `Save (${liveAcres.toFixed(1)} ac)`}
-            </button>
-          </div>
-        </form>
-      )}
     </section>
   );
 };

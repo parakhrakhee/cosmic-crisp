@@ -296,6 +296,13 @@ export const INITIAL_FIELDS: FieldRecord[] = [
       is_manual_override: false,
       mukey: '405612',
       updated_at: '2026-11-01T10:00:00.000Z',
+      om_history: [
+        { season_year: 2022, season_label: 'Fall 2022', organic_matter_pct: 3.7, ph: 6.2, crop_grown: 'Corn (Maize)', source: 'Lab Core Sample' },
+        { season_year: 2023, season_label: 'Fall 2023', organic_matter_pct: 3.8, ph: 6.3, crop_grown: 'Soybeans / Pulses', source: 'Lab Core Sample' },
+        { season_year: 2024, season_label: 'Fall 2024', organic_matter_pct: 3.9, ph: 6.3, crop_grown: 'Winter Wheat / Barley', source: 'Lab Core Sample' },
+        { season_year: 2025, season_label: 'Fall 2025', organic_matter_pct: 4.0, ph: 6.4, crop_grown: 'Soybeans / Pulses', source: 'Lab Core Sample' },
+        { season_year: 2026, season_label: 'Fall 2026', organic_matter_pct: 4.1, ph: 6.4, crop_grown: 'Corn (Maize)', source: 'USDA NRCS SSURGO' },
+      ],
     },
     telemetry: {
       grid_lat: 42.0,
@@ -363,6 +370,12 @@ export const INITIAL_FIELDS: FieldRecord[] = [
       is_manual_override: false,
       mukey: '188420',
       updated_at: '2026-11-02T14:20:00.000Z',
+      om_history: [
+        { season_year: 2023, season_label: 'Fall 2023', organic_matter_pct: 2.9, ph: 5.8, crop_grown: 'Winter Wheat / Barley', source: 'Lab Core Sample' },
+        { season_year: 2024, season_label: 'Fall 2024', organic_matter_pct: 3.0, ph: 5.8, crop_grown: 'Canola / Mustard', source: 'Lab Core Sample' },
+        { season_year: 2025, season_label: 'Fall 2025', organic_matter_pct: 3.1, ph: 5.9, crop_grown: 'Winter Wheat / Barley', source: 'Lab Core Sample' },
+        { season_year: 2026, season_label: 'Fall 2026', organic_matter_pct: 3.2, ph: 5.9, crop_grown: 'Winter Wheat + Rye Cover', source: 'USDA NRCS SSURGO' },
+      ],
     },
     telemetry: {
       grid_lat: 46.5,
@@ -430,6 +443,12 @@ export const INITIAL_FIELDS: FieldRecord[] = [
       is_manual_override: false,
       mukey: '742091',
       updated_at: '2026-11-03T09:15:00.000Z',
+      om_history: [
+        { season_year: 2023, season_label: 'Fall 2023', organic_matter_pct: 2.2, ph: 7.4, crop_grown: 'Sunflower / Potato', source: 'Lab Core Sample' },
+        { season_year: 2024, season_label: 'Fall 2024', organic_matter_pct: 2.1, ph: 7.4, crop_grown: 'Winter Wheat / Barley', source: 'Lab Core Sample' },
+        { season_year: 2025, season_label: 'Fall 2025', organic_matter_pct: 2.0, ph: 7.5, crop_grown: 'Winter Wheat / Barley', source: 'Lab Core Sample' },
+        { season_year: 2026, season_label: 'Fall 2026', organic_matter_pct: 1.9, ph: 7.5, crop_grown: 'Sunflower / Potato', source: 'USDA NRCS SSURGO' },
+      ],
     },
     telemetry: {
       grid_lat: 36.5,

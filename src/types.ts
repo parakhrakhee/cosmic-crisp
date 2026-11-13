@@ -9,6 +9,8 @@ export type {
   MonthlyClimatePoint,
   RankedRotationPlan,
   RotationGenerationResponse,
+  SoilHistoryPoint,
   SoilProfile,
   YearPlanStep,
+  YieldRecord,
 } from '../server/types';

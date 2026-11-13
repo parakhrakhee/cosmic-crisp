@@ -5,7 +5,7 @@ import { fetchNasaPowerTelemetry } from '../services/nasaPower';
 import { generateRotationPlans } from '../services/rotationEngine';
 import { loadStore, saveStore } from '../services/store';
 import { fetchUsdaSoilProfile } from '../services/usdaSoil';
-import type { ActivityLogEntry, FieldRecord, GeoJsonPolygon } from '../types';
+import type { ActivityLogEntry, FieldRecord, GeoJsonPolygon, YieldRecord } from '../types';
 
 export const apiRouter = Router();
 
@@ -54,6 +54,17 @@ apiRouter.post('/fields', async (req, res) => {
       geometry?: GeoJsonPolygon;
       previous_crops?: string[];
       irrigated?: boolean;
+      area_auto_calc?: boolean;
+      acreage?: number;
+      area_ha?: number;
+      notes?: string;
+      yields?: YieldRecord[];
+      analysis_status?: 'pending' | 'analyzed';
+      ph?: number;
+      organic_matter_pct?: number;
+      salinity_dsm?: number;
+      soil_texture?: string;
+      cec_meq?: number;
       mean_slope_pct?: number;
       smap_rootzone_moisture?: number;
     };
@@ -76,7 +87,16 @@ apiRouter.post('/fields', async (req, res) => {
     const feature = turf.polygon(body.geometry.coordinates);
     const cleaned = turf.cleanCoords(feature);
     const sqMeters = turf.area(cleaned);
-    const acreage = Number((sqMeters * 0.000247105381).toFixed(2));
+    const autoAcreage = Number((sqMeters * 0.000247105381).toFixed(2));
+    const useAutoCalc = body.area_auto_calc !== false;
+    const acreage = useAutoCalc
+      ? autoAcreage
+      : typeof body.area_ha === 'number' && body.area_ha > 0
+        ? Number((body.area_ha * 2.47105381).toFixed(2))
+        : typeof body.acreage === 'number' && body.acreage > 0
+          ? Number(body.acreage.toFixed(2))
+          : autoAcreage;
+
     const center = turf.centroid(cleaned);
     const [centroidLon, centroidLat] = center.geometry.coordinates;
 
@@ -86,8 +106,26 @@ apiRouter.post('/fields', async (req, res) => {
       cleaned.geometry as GeoJsonPolygon
     );
 
-    if (typeof body.irrigated === 'boolean') {
-      soil.irrigated = body.irrigated;
+    if (typeof body.irrigated === 'boolean') soil.irrigated = body.irrigated;
+    if (typeof body.ph === 'number' && Number.isFinite(body.ph)) {
+      soil.ph = Number(body.ph.toFixed(1));
+      soil.is_manual_override = true;
+    }
+    if (typeof body.organic_matter_pct === 'number' && Number.isFinite(body.organic_matter_pct)) {
+      soil.organic_matter_pct = Number(body.organic_matter_pct.toFixed(1));
+      soil.is_manual_override = true;
+    }
+    if (typeof body.salinity_dsm === 'number' && Number.isFinite(body.salinity_dsm)) {
+      soil.salinity_dsm = Number(body.salinity_dsm.toFixed(2));
+      soil.is_manual_override = true;
+    }
+    if (typeof body.soil_texture === 'string' && body.soil_texture.trim()) {
+      soil.soil_texture = body.soil_texture.trim();
+      soil.is_manual_override = true;
+    }
+    if (typeof body.cec_meq === 'number' && Number.isFinite(body.cec_meq)) {
+      soil.cec_meq = Number(body.cec_meq.toFixed(1));
+      soil.is_manual_override = true;
     }
     if (typeof body.mean_slope_pct === 'number' && Number.isFinite(body.mean_slope_pct)) {
       soil.mean_slope_pct = Number(body.mean_slope_pct.toFixed(1));
@@ -95,10 +133,30 @@ apiRouter.post('/fields', async (req, res) => {
     if (typeof body.smap_rootzone_moisture === 'number' && Number.isFinite(body.smap_rootzone_moisture)) {
       soil.smap_rootzone_moisture = Math.max(0, Math.min(100, Math.round(body.smap_rootzone_moisture)));
     }
+    if (soil.is_manual_override) {
+      soil.source = 'Manual Pre-Analysis Entry';
+    }
 
     const telemetry = await fetchNasaPowerTelemetry(centroidLat, centroidLon, elevationM);
 
-    const now = new Date().toISOString();
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const currentYr = now.getUTCFullYear();
+    const priorCropId =
+      Array.isArray(body.previous_crops) && body.previous_crops.length > 0
+        ? body.previous_crops[0]
+        : 'corn';
+    soil.om_history = [
+      {
+        season_year: currentYr,
+        season_label: `Fall ${currentYr}`,
+        organic_matter_pct: soil.organic_matter_pct,
+        ph: soil.ph,
+        crop_grown: priorCropId,
+        source: soil.source,
+      },
+    ];
+
     const newField: FieldRecord = {
       id: `field-${Date.now().toString(36)}`,
       name: body.name.trim(),
@@ -109,14 +167,18 @@ apiRouter.post('/fields', async (req, res) => {
       centroid_lat: Number(centroidLat.toFixed(5)),
       centroid_lon: Number(centroidLon.toFixed(5)),
       acreage,
+      area_auto_calc: useAutoCalc,
+      notes: body.notes?.trim() || '',
+      yields: Array.isArray(body.yields) ? body.yields : [],
+      analysis_status: body.analysis_status === 'pending' ? 'pending' : 'analyzed',
       previous_crops:
         Array.isArray(body.previous_crops) && body.previous_crops.length > 0
           ? body.previous_crops
           : ['corn'],
       soil,
       telemetry,
-      created_at: now,
-      updated_at: now,
+      created_at: nowIso,
+      updated_at: nowIso,
     };
 
     const store = loadStore();
@@ -131,16 +193,164 @@ apiRouter.post('/fields', async (req, res) => {
   }
 });
 
+apiRouter.put('/fields/:id', async (req, res) => {
+  try {
+    const store = loadStore();
+    const idx = store.fields.findIndex((f) => f.id === req.params.id);
+    const body = req.body as Partial<{
+      existing_field: FieldRecord;
+      name: string;
+      location_label: string;
+      geometry: GeoJsonPolygon;
+      previous_crops: string[];
+      area_auto_calc: boolean;
+      acreage: number;
+      area_ha: number;
+      notes: string;
+      yields: YieldRecord[];
+      analysis_status: 'pending' | 'analyzed';
+      ph: number;
+      organic_matter_pct: number;
+      salinity_dsm: number;
+      soil_texture: string;
+      cec_meq: number;
+      mean_slope_pct: number;
+      smap_rootzone_moisture: number;
+      irrigated: boolean;
+    }>;
+
+    const existing = idx !== -1 ? store.fields[idx] : body.existing_field;
+    if (!existing) {
+      res.status(404).json({ error: 'Field not found' });
+      return;
+    }
+
+    let geometry = existing.geometry;
+    let centroidLat = existing.centroid_lat;
+    let centroidLon = existing.centroid_lon;
+    let autoAcreage = existing.acreage;
+    let telemetry = existing.telemetry;
+
+    if (
+      body.geometry &&
+      body.geometry.type === 'Polygon' &&
+      Array.isArray(body.geometry.coordinates) &&
+      body.geometry.coordinates[0]?.length >= 4
+    ) {
+      const feature = turf.polygon(body.geometry.coordinates);
+      const cleaned = turf.cleanCoords(feature);
+      geometry = cleaned.geometry as GeoJsonPolygon;
+      autoAcreage = Number((turf.area(cleaned) * 0.000247105381).toFixed(2));
+      const center = turf.centroid(cleaned);
+      [centroidLon, centroidLat] = center.geometry.coordinates;
+      centroidLat = Number(centroidLat.toFixed(5));
+      centroidLon = Number(centroidLon.toFixed(5));
+
+      if (
+        Math.abs(centroidLat - existing.centroid_lat) > 0.01 ||
+        Math.abs(centroidLon - existing.centroid_lon) > 0.01
+      ) {
+        telemetry = await fetchNasaPowerTelemetry(
+          centroidLat,
+          centroidLon,
+          existing.telemetry.elevation_m
+        );
+      }
+    }
+
+    const useAutoCalc =
+      typeof body.area_auto_calc === 'boolean'
+        ? body.area_auto_calc
+        : existing.area_auto_calc !== false;
+
+    const acreage = useAutoCalc
+      ? body.geometry
+        ? autoAcreage
+        : Number((turf.area(turf.polygon(geometry.coordinates)) * 0.000247105381).toFixed(2))
+      : typeof body.area_ha === 'number' && body.area_ha > 0
+        ? Number((body.area_ha * 2.47105381).toFixed(2))
+        : typeof body.acreage === 'number' && body.acreage > 0
+          ? Number(body.acreage.toFixed(2))
+          : existing.acreage;
+
+    const updatedSoil = { ...existing.soil };
+    let soilTouched = false;
+    if (typeof body.ph === 'number' && Number.isFinite(body.ph)) {
+      updatedSoil.ph = Number(body.ph.toFixed(1));
+      soilTouched = true;
+    }
+    if (typeof body.organic_matter_pct === 'number' && Number.isFinite(body.organic_matter_pct)) {
+      updatedSoil.organic_matter_pct = Number(body.organic_matter_pct.toFixed(1));
+      soilTouched = true;
+    }
+    if (typeof body.salinity_dsm === 'number' && Number.isFinite(body.salinity_dsm)) {
+      updatedSoil.salinity_dsm = Number(body.salinity_dsm.toFixed(2));
+      soilTouched = true;
+    }
+    if (typeof body.soil_texture === 'string' && body.soil_texture.trim()) {
+      updatedSoil.soil_texture = body.soil_texture.trim();
+      soilTouched = true;
+    }
+    if (typeof body.cec_meq === 'number' && Number.isFinite(body.cec_meq)) {
+      updatedSoil.cec_meq = Number(body.cec_meq.toFixed(1));
+      soilTouched = true;
+    }
+    if (typeof body.mean_slope_pct === 'number' && Number.isFinite(body.mean_slope_pct)) {
+      updatedSoil.mean_slope_pct = Number(body.mean_slope_pct.toFixed(1));
+    }
+    if (typeof body.smap_rootzone_moisture === 'number' && Number.isFinite(body.smap_rootzone_moisture)) {
+      updatedSoil.smap_rootzone_moisture = Math.max(0, Math.min(100, Math.round(body.smap_rootzone_moisture)));
+    }
+    if (typeof body.irrigated === 'boolean') {
+      updatedSoil.irrigated = body.irrigated;
+    }
+    if (soilTouched) {
+      updatedSoil.is_manual_override = true;
+      updatedSoil.source = 'Manual Lab Soil Test Override';
+      updatedSoil.updated_at = new Date().toISOString();
+    }
+
+    const updatedField: FieldRecord = {
+      ...existing,
+      name: body.name?.trim() || existing.name,
+      location_label:
+        body.location_label !== undefined ? body.location_label.trim() : existing.location_label,
+      geometry,
+      centroid_lat: centroidLat,
+      centroid_lon: centroidLon,
+      acreage,
+      area_auto_calc: useAutoCalc,
+      notes: body.notes !== undefined ? body.notes : existing.notes,
+      yields: Array.isArray(body.yields) ? body.yields : existing.yields,
+      analysis_status: body.analysis_status || existing.analysis_status || 'analyzed',
+      previous_crops:
+        Array.isArray(body.previous_crops) && body.previous_crops.length > 0
+          ? body.previous_crops
+          : existing.previous_crops,
+      soil: updatedSoil,
+      telemetry,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (idx !== -1) {
+      store.fields[idx] = updatedField;
+    } else {
+      store.fields.unshift(updatedField);
+    }
+    saveStore(store);
+    res.json({ field: updatedField });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Failed to update field',
+    });
+  }
+});
+
 apiRouter.put('/fields/:id/soil', (req, res) => {
   const store = loadStore();
   const idx = store.fields.findIndex((f) => f.id === req.params.id);
-  if (idx === -1) {
-    res.status(404).json({ error: 'Field not found' });
-    return;
-  }
-
-  const field = store.fields[idx];
   const body = req.body as Partial<{
+    existing_field: FieldRecord;
     ph: number;
     organic_matter_pct: number;
     soil_texture: string;
@@ -151,6 +361,12 @@ apiRouter.put('/fields/:id/soil', (req, res) => {
     irrigated: boolean;
     previous_crops: string[];
   }>;
+
+  const field = idx !== -1 ? store.fields[idx] : body.existing_field;
+  if (!field) {
+    res.status(404).json({ error: 'Field not found' });
+    return;
+  }
 
   const updatedSoil = {
     ...field.soil,
@@ -177,6 +393,25 @@ apiRouter.put('/fields/:id/soil', (req, res) => {
     updated_at: new Date().toISOString(),
   };
 
+  const currentYear = new Date().getUTCFullYear();
+  const existingHistory = Array.isArray(field.soil.om_history) ? [...field.soil.om_history] : [];
+  const nextPoint = {
+    season_year: currentYear,
+    season_label: `Fall ${currentYear}`,
+    organic_matter_pct: updatedSoil.organic_matter_pct,
+    ph: updatedSoil.ph,
+    crop_grown: field.previous_crops[0] || 'Lab Core Sample',
+    source: 'Manual Lab Override',
+  };
+  const yrIdx = existingHistory.findIndex((h) => h.season_year === currentYear);
+  if (yrIdx >= 0) {
+    existingHistory[yrIdx] = nextPoint;
+  } else {
+    existingHistory.push(nextPoint);
+  }
+  existingHistory.sort((a, b) => a.season_year - b.season_year);
+  updatedSoil.om_history = existingHistory;
+
   const updatedField: FieldRecord = {
     ...field,
     ...(Array.isArray(body.previous_crops) && body.previous_crops.length > 0
@@ -186,7 +421,11 @@ apiRouter.put('/fields/:id/soil', (req, res) => {
     updated_at: new Date().toISOString(),
   };
 
-  store.fields[idx] = updatedField;
+  if (idx !== -1) {
+    store.fields[idx] = updatedField;
+  } else {
+    store.fields.unshift(updatedField);
+  }
   saveStore(store);
   res.json({ field: updatedField });
 });
@@ -194,10 +433,6 @@ apiRouter.put('/fields/:id/soil', (req, res) => {
 apiRouter.delete('/fields/:id', (req, res) => {
   const store = loadStore();
   const nextFields = store.fields.filter((f) => f.id !== req.params.id);
-  if (nextFields.length === store.fields.length) {
-    res.status(404).json({ error: 'Field not found' });
-    return;
-  }
   store.fields = nextFields;
   store.activities = store.activities.filter((a) => a.field_id !== req.params.id);
   saveStore(store);
@@ -229,11 +464,16 @@ apiRouter.get('/telemetry', async (req, res) => {
 
     const lat = Number(req.query.lat);
     const lon = Number(req.query.lon);
+    const elevationM = Number(req.query.elevation_m);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
       res.status(400).json({ error: 'Provide either field_id or valid lat & lon query params' });
       return;
     }
-    const telemetry = await fetchNasaPowerTelemetry(lat, lon);
+    const telemetry = await fetchNasaPowerTelemetry(
+      lat,
+      lon,
+      Number.isFinite(elevationM) ? elevationM : undefined
+    );
     res.json({ telemetry });
   } catch (err) {
     res.status(500).json({
@@ -247,25 +487,35 @@ apiRouter.post('/rotations/generate', (req, res) => {
     const body = req.body as {
       field_id?: string;
       previous_crop_id?: string;
+      field?: FieldRecord;
     };
 
-    if (!body.field_id) {
-      res.status(400).json({ error: 'field_id is required' });
+    if (!body.field_id && !body.field) {
+      res.status(400).json({ error: 'field_id or field is required' });
       return;
     }
 
     const store = loadStore();
-    const idx = store.fields.findIndex((f) => f.id === body.field_id);
-    if (idx === -1) {
+    const targetId = body.field_id || body.field?.id;
+    const idx = targetId ? store.fields.findIndex((f) => f.id === targetId) : -1;
+    const field = body.field && body.field.soil && body.field.telemetry
+      ? body.field
+      : idx !== -1
+        ? store.fields[idx]
+        : null;
+
+    if (!field) {
       res.status(404).json({ error: 'Field not found' });
       return;
     }
 
-    const field = store.fields[idx];
-    if (body.previous_crop_id && body.previous_crop_id !== field.previous_crops[0]) {
-      field.previous_crops = [body.previous_crop_id, ...field.previous_crops.slice(1)];
-      field.updated_at = new Date().toISOString();
-      store.fields[idx] = field;
+    if (idx !== -1 && body.previous_crop_id && body.previous_crop_id !== field.previous_crops[0]) {
+      const updated = {
+        ...field,
+        previous_crops: [body.previous_crop_id, ...field.previous_crops.slice(1)],
+        updated_at: new Date().toISOString(),
+      };
+      store.fields[idx] = updated;
       saveStore(store);
     }
 

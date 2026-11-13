@@ -60,6 +60,7 @@ class SoilProfile(Base):
     source: Mapped[str] = mapped_column(String(120), nullable=False, default="USDA NRCS SSURGO")
     is_manual_override: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     mukey: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    om_history: Mapped[list[dict]] = mapped_column(JSON, default=list)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

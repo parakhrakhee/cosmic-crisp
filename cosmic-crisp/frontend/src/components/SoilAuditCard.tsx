@@ -1,12 +1,179 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import * as d3 from 'd3';
 import { SlidersHorizontal, X } from 'lucide-react';
-import type { FieldResponseDTO, SoilOverrideRequest } from '@/lib/api';
+import type { FieldResponseDTO, SoilHistoryPointDTO, SoilOverrideRequest } from '@/lib/api';
 
 interface SoilAuditCardProps {
   field: FieldResponseDTO;
   onSaveOverride: (fieldId: string, payload: SoilOverrideRequest) => Promise<void>;
+}
+
+const CHART_WIDTH = 720;
+const CHART_HEIGHT = 185;
+const MARGIN = { top: 16, right: 24, bottom: 28, left: 46 };
+
+function SoilOmTrendChart({ history }: { history: SoilHistoryPointDTO[] }) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+  const sorted = useMemo(
+    () => [...history].sort((a, b) => a.season_year - b.season_year),
+    [history]
+  );
+
+  const chart = useMemo(() => {
+    const innerW = CHART_WIDTH - MARGIN.left - MARGIN.right;
+    const innerH = CHART_HEIGHT - MARGIN.top - MARGIN.bottom;
+
+    const omValues = sorted.map((d) => d.organic_matter_pct);
+    const minOm = Math.max(0, Math.floor((Math.min(...omValues) - 0.35) * 10) / 10);
+    const maxOm = Math.ceil((Math.max(...omValues) + 0.35) * 10) / 10;
+
+    const xScale = d3
+      .scalePoint<string>()
+      .domain(sorted.map((d) => d.season_label))
+      .range([MARGIN.left, MARGIN.left + innerW])
+      .padding(0.25);
+
+    const yScale = d3
+      .scaleLinear()
+      .domain([minOm, maxOm])
+      .nice(4)
+      .range([MARGIN.top + innerH, MARGIN.top]);
+
+    const lineGen = d3
+      .line<SoilHistoryPointDTO>()
+      .x((d) => xScale(d.season_label) ?? MARGIN.left)
+      .y((d) => yScale(d.organic_matter_pct))
+      .curve(d3.curveMonotoneX);
+
+    const areaGen = d3
+      .area<SoilHistoryPointDTO>()
+      .x((d) => xScale(d.season_label) ?? MARGIN.left)
+      .y0(MARGIN.top + innerH)
+      .y1((d) => yScale(d.organic_matter_pct))
+      .curve(d3.curveMonotoneX);
+
+    return {
+      innerH,
+      yTicks: yScale.ticks(4),
+      yScale,
+      linePath: lineGen(sorted) || '',
+      areaPath: areaGen(sorted) || '',
+      points: sorted.map((d) => ({
+        point: d,
+        cx: xScale(d.season_label) ?? MARGIN.left,
+        cy: yScale(d.organic_matter_pct),
+      })),
+    };
+  }, [sorted]);
+
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const delta = Number((last.organic_matter_pct - first.organic_matter_pct).toFixed(2));
+  const activePoint = hoveredIdx !== null ? sorted[hoveredIdx] : last;
+
+  const trendTone =
+    delta > 0.05 ? 'text-emerald-700' : delta < -0.05 ? 'text-rose-700' : 'text-slate-700';
+  const trendLabel =
+    delta > 0.05
+      ? `▲ +${delta.toFixed(1)}% Building OM`
+      : delta < -0.05
+        ? `▼ ${delta.toFixed(1)}% Depleting OM`
+        : '● Stable OM';
+
+  return (
+    <div className="border-t border-slate-200 px-5 py-4 bg-slate-50/40">
+      <div className="flex flex-wrap items-baseline justify-between gap-3 mb-2">
+        <div className="flex flex-wrap items-baseline gap-2.5">
+          <h3 className="text-xs font-semibold text-slate-800">
+            Historical Soil Organic Matter Trend ({sorted.length} Seasons)
+          </h3>
+          <span className={`text-xs font-mono tabular-nums font-medium ${trendTone}`}>
+            {trendLabel}
+          </span>
+        </div>
+        <div className="text-xs font-mono tabular-nums text-slate-600">
+          <span className="font-semibold text-slate-900">
+            {activePoint.season_label} · {activePoint.organic_matter_pct.toFixed(1)}% OM
+          </span>{' '}
+          · pH {activePoint.ph.toFixed(1)} · {activePoint.crop_grown} ({activePoint.source})
+        </div>
+      </div>
+
+      <svg
+        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+        className="w-full h-44 overflow-visible"
+        role="img"
+        aria-label="D3 line chart of historical soil organic matter percentage"
+      >
+        <defs>
+          <linearGradient id="omAreaFillNext" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#059669" stopOpacity={0.18} />
+            <stop offset="100%" stopColor="#059669" stopOpacity={0.01} />
+          </linearGradient>
+        </defs>
+
+        {chart.yTicks.map((tick) => {
+          const y = chart.yScale(tick);
+          return (
+            <g key={tick}>
+              <line x1={MARGIN.left} y1={y} x2={CHART_WIDTH - MARGIN.right} y2={y} stroke="#E2E8F0" strokeWidth={1} />
+              <text x={MARGIN.left - 8} y={y + 3.5} textAnchor="end" className="fill-slate-400 text-[10px] font-mono tabular-nums">
+                {tick.toFixed(1)}%
+              </text>
+            </g>
+          );
+        })}
+
+        <path d={chart.areaPath} fill="url(#omAreaFillNext)" />
+        <path d={chart.linePath} fill="none" stroke={delta < -0.05 ? '#DC2626' : '#047857'} strokeWidth={2} />
+
+        {hoveredIdx !== null && chart.points[hoveredIdx] && (
+          <line
+            x1={chart.points[hoveredIdx].cx}
+            y1={MARGIN.top}
+            x2={chart.points[hoveredIdx].cx}
+            y2={MARGIN.top + chart.innerH}
+            stroke="#94A3B8"
+            strokeWidth={1}
+            strokeDasharray="3 3"
+          />
+        )}
+
+        {chart.points.map(({ point, cx, cy }, idx) => {
+          const active = hoveredIdx === idx;
+          return (
+            <g
+              key={point.season_year}
+              onMouseEnter={() => setHoveredIdx(idx)}
+              onMouseLeave={() => setHoveredIdx(null)}
+              className="cursor-crosshair"
+            >
+              <rect x={cx - 28} y={MARGIN.top} width={56} height={chart.innerH + 22} fill="transparent" />
+              <circle
+                cx={cx}
+                cy={cy}
+                r={active ? 5.5 : 3.5}
+                fill="#FFFFFF"
+                stroke={delta < -0.05 ? '#DC2626' : '#047857'}
+                strokeWidth={2}
+              />
+              <text
+                x={cx}
+                y={CHART_HEIGHT - 6}
+                textAnchor="middle"
+                className={`text-[10px] font-mono tabular-nums ${active ? 'fill-slate-900 font-semibold' : 'fill-slate-500'}`}
+              >
+                {point.season_label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
 }
 
 export function SoilAuditCard({ field, onSaveOverride }: SoilAuditCardProps) {
@@ -57,6 +224,7 @@ export function SoilAuditCard({ field, onSaveOverride }: SoilAuditCardProps) {
 
   const smapPenaltyRisk = soil.smap_rootzone_moisture < 30 && !soil.irrigated;
   const slopeErosionTrigger = soil.mean_slope_pct > 5.0;
+  const omHistory = soil.om_history || [];
 
   return (
     <section className="border border-slate-200 bg-white rounded-lg overflow-hidden">
@@ -175,8 +343,17 @@ export function SoilAuditCard({ field, onSaveOverride }: SoilAuditCardProps) {
         </div>
       </div>
 
+      {/* Multi-Season Soil Organic Matter D3 Line Chart */}
+      {omHistory.length >= 2 ? (
+        <SoilOmTrendChart history={omHistory} />
+      ) : (
+        <div className="border-t border-slate-200 px-5 py-3 bg-slate-50/40 text-xs text-slate-500">
+          Multi-season Soil Organic Matter trend chart appears once at least 2 seasonal soil samples are stored in the database for {field.name}.
+        </div>
+      )}
+
       {/* NASA POWER Climate Summary Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 bg-slate-50/40 text-xs">
+      <div className="grid grid-cols-2 sm:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 border-t border-slate-200 bg-slate-50/40 text-xs">
         <div className="px-4 py-3">
           <div className="text-slate-500">85th-Pct GDD (Base 10°C)</div>
           <div className="mt-0.5 text-sm font-semibold font-mono tabular-nums text-slate-900">
@@ -224,7 +401,7 @@ export function SoilAuditCard({ field, onSaveOverride }: SoilAuditCardProps) {
                   Manual Lab Soil Override — {field.name}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Persists via PUT /api/v1/fields/{field.id}/soil and re-runs the 4-stage engine
+                  Persists via PUT /api/v1/fields/{field.id}/soil and updates multi-season OM history
                 </p>
               </div>
               <button

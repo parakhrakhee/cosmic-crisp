@@ -20,6 +20,15 @@ export interface GeoJsonPolygonDTO {
   coordinates: number[][][];
 }
 
+export interface SoilHistoryPointDTO {
+  season_year: number;
+  season_label: string;
+  organic_matter_pct: number;
+  ph: number;
+  crop_grown: string;
+  source: string;
+}
+
 export interface SoilProfileDTO {
   ph: number;
   organic_matter_pct: number;
@@ -33,6 +42,7 @@ export interface SoilProfileDTO {
   is_manual_override: boolean;
   mukey?: string | null;
   updated_at: string;
+  om_history?: SoilHistoryPointDTO[];
 }
 
 export interface SoilOverrideRequest {

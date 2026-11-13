@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { RefreshCw, CloudOff, CheckCircle2, Plus } from 'lucide-react';
 import type {
   ActivityLogEntry,
   ClimateTelemetry,
   CropSpec,
   FieldRecord,
+  RotationGenerationResponse,
 } from '../types';
 
 /* -------------------------------------------------------------------------- */
@@ -14,14 +15,24 @@ export const CompatibilityMatrixView: React.FC<{
   crops: CropSpec[];
   coverCrops: CropSpec[];
   matrix: Record<string, Record<string, number>>;
-}> = ({ crops, coverCrops, matrix }) => {
+  selectedField?: FieldRecord | null;
+  rotationData?: RotationGenerationResponse | null;
+}> = ({ crops, coverCrops, matrix, selectedField, rotationData }) => {
   const [hoveredCell, setHoveredCell] = useState<{
     prev: string;
     next: string;
     score: number;
   } | null>(null);
 
-  const cellStyle = (score: number) => {
+  const priorCropId = selectedField?.previous_crops[0] || '';
+  const priorCropName =
+    crops.find((c) => c.id === priorCropId)?.name || priorCropId || 'None';
+  const gateStatusByCropId = new Map(
+    (rotationData?.gate_audit_log || []).map((g) => [g.crop_id, g])
+  );
+
+  const cellStyle = (score: number, isEliminated: boolean) => {
+    if (isEliminated) return 'bg-slate-100/80 text-slate-400 line-through';
     if (score >= 85) return 'bg-emerald-50 text-emerald-900 font-semibold';
     if (score >= 70) return 'bg-slate-50 text-slate-800 font-medium';
     if (score >= 50) return 'bg-amber-50 text-amber-900';
@@ -35,9 +46,12 @@ export const CompatibilityMatrixView: React.FC<{
           <div>
             <h2 className="text-base font-semibold text-slate-900">
               6×6 Master Crop Rotation Compatibility Matrix
+              {selectedField ? ` · ${selectedField.name}` : ''}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Baseline agronomic transition scores B(Prev → Next) used in Stage 2 before legume N-credit and SMAP moisture modifiers
+              {selectedField
+                ? `Active Field Prior Crop: ${priorCropName} · pH ${selectedField.soil.ph.toFixed(1)} · EC ${selectedField.soil.salinity_dsm.toFixed(2)} dS/m · 85th-Pct GDD ${selectedField.telemetry.gdd_85th_percentile} °C·d`
+                : 'Baseline agronomic transition scores B(Prev → Next) used in Stage 2 before legume N-credit and SMAP moisture modifiers'}
             </p>
           </div>
           {hoveredCell && (
@@ -52,44 +66,71 @@ export const CompatibilityMatrixView: React.FC<{
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
                 <th className="py-3 px-4 text-left font-semibold">Previous Crop \ Next Crop</th>
-                {crops.map((nextCrop) => (
-                  <th key={nextCrop.id} className="py-3 px-3 text-center font-semibold">
-                    <div>{nextCrop.name}</div>
-                    <div className="font-normal text-slate-400">{nextCrop.botanical_family}</div>
-                  </th>
-                ))}
+                {crops.map((nextCrop) => {
+                  const gate = gateStatusByCropId.get(nextCrop.id);
+                  const eliminated = gate ? !gate.passed : false;
+                  return (
+                    <th key={nextCrop.id} className="py-3 px-3 text-center font-semibold">
+                      <div className={eliminated ? 'text-rose-700' : ''}>{nextCrop.name}</div>
+                      <div className="font-normal text-slate-400">
+                        {nextCrop.botanical_family}
+                        {gate ? (gate.passed ? ' · Passed' : ' · Gate Blocked') : ''}
+                      </div>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {crops.map((prevCrop) => (
-                <tr key={prevCrop.id}>
-                  <td className="py-3 px-4 border-r border-slate-200 bg-slate-50/40">
-                    <div className="font-semibold text-slate-900">{prevCrop.name}</div>
-                    <div className="text-slate-500">{prevCrop.botanical_family}</div>
-                  </td>
-                  {crops.map((nextCrop) => {
-                    const score = matrix[prevCrop.id]?.[nextCrop.id] ?? 0;
-                    return (
-                      <td
-                        key={`${prevCrop.id}-${nextCrop.id}`}
-                        onMouseEnter={() =>
-                          setHoveredCell({
-                            prev: prevCrop.name,
-                            next: nextCrop.name,
+              {crops.map((prevCrop) => {
+                const isActivePriorRow = prevCrop.id === priorCropId;
+                return (
+                  <tr
+                    key={prevCrop.id}
+                    className={isActivePriorRow ? 'ring-1 ring-inset ring-emerald-600' : ''}
+                  >
+                    <td
+                      className={`py-3 px-4 border-r border-slate-200 ${
+                        isActivePriorRow ? 'bg-emerald-50/70' : 'bg-slate-50/40'
+                      }`}
+                    >
+                      <div className="font-semibold text-slate-900">
+                        {prevCrop.name}
+                        {isActivePriorRow && (
+                          <span className="ml-1.5 text-[10px] font-medium text-emerald-700">
+                            (Current Prior)
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-slate-500">{prevCrop.botanical_family}</div>
+                    </td>
+                    {crops.map((nextCrop) => {
+                      const score = matrix[prevCrop.id]?.[nextCrop.id] ?? 0;
+                      const gate = gateStatusByCropId.get(nextCrop.id);
+                      const isEliminated = gate ? !gate.passed : false;
+                      return (
+                        <td
+                          key={`${prevCrop.id}-${nextCrop.id}`}
+                          onMouseEnter={() =>
+                            setHoveredCell({
+                              prev: prevCrop.name,
+                              next: nextCrop.name,
+                              score,
+                            })
+                          }
+                          onMouseLeave={() => setHoveredCell(null)}
+                          className={`py-3 px-3 text-center font-mono tabular-nums border-r border-slate-100 last:border-r-0 transition-colors ${cellStyle(
                             score,
-                          })
-                        }
-                        onMouseLeave={() => setHoveredCell(null)}
-                        className={`py-3 px-3 text-center font-mono tabular-nums border-r border-slate-100 last:border-r-0 transition-colors ${cellStyle(
-                          score
-                        )}`}
-                      >
-                        {score}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                            isEliminated
+                          )}`}
+                        >
+                          {score}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -100,6 +141,7 @@ export const CompatibilityMatrixView: React.FC<{
         <div className="px-5 py-4 border-b border-slate-200">
           <h3 className="text-sm font-semibold text-slate-900">
             Crop Group Gate Tolerances & Automated Cover Crops
+            {selectedField ? ` · Evaluated for ${selectedField.name}` : ''}
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
             Seeded physiological bounds enforced by Stage 1 Gates and Stage 4 Overwinter Cover Crop Injection
@@ -111,6 +153,9 @@ export const CompatibilityMatrixView: React.FC<{
               <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
                 <th className="py-2.5 px-4 font-semibold">Crop Group</th>
                 <th className="py-2.5 px-3 font-semibold">Role</th>
+                {selectedField && (
+                  <th className="py-2.5 px-3 font-semibold">{selectedField.name} Status</th>
+                )}
                 <th className="py-2.5 px-3 font-semibold">pH Range</th>
                 <th className="py-2.5 px-3 font-semibold">Max EC</th>
                 <th className="py-2.5 px-3 font-semibold">Min GDD</th>
@@ -121,29 +166,49 @@ export const CompatibilityMatrixView: React.FC<{
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 font-mono tabular-nums">
-              {[...crops, ...coverCrops].map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50/70">
-                  <td className="py-2.5 px-4 font-sans">
-                    <div className="font-medium text-slate-900">{c.name}</div>
-                    <div className="text-slate-500">{c.botanical_family}</div>
-                  </td>
-                  <td className="py-2.5 px-3 font-sans text-slate-700">
-                    {c.is_cover_crop ? 'Overwinter Cover' : c.is_legume ? 'Legume Cash' : 'Cash Crop'}
-                  </td>
-                  <td className="py-2.5 px-3 text-slate-800">
-                    {c.ph_min.toFixed(1)}–{c.ph_max.toFixed(1)}
-                  </td>
-                  <td className="py-2.5 px-3 text-slate-800">{c.max_salinity_dsm.toFixed(1)} dS/m</td>
-                  <td className="py-2.5 px-3 text-slate-800">{c.gdd_required} °C·d</td>
-                  <td className="py-2.5 px-3 text-slate-800">{c.frost_free_days_min}d (+14d)</td>
-                  <td className="py-2.5 px-3 text-slate-800">{c.min_rotation_break_years} yr</td>
-                  <td className="py-2.5 px-3 text-slate-800">{c.water_demand_mm} mm</td>
-                  <td className="py-2.5 px-3 text-slate-800">
-                    {c.n_balance_lbs_acre >= 0 ? `+${c.n_balance_lbs_acre}` : c.n_balance_lbs_acre} lb
-                    {c.n_credit_provided_lbs_acre > 0 ? ` (+${c.n_credit_provided_lbs_acre} credit)` : ''}
-                  </td>
-                </tr>
-              ))}
+              {[...crops, ...coverCrops].map((c) => {
+                const gate = gateStatusByCropId.get(c.id);
+                return (
+                  <tr key={c.id} className="hover:bg-slate-50/70">
+                    <td className="py-2.5 px-4 font-sans">
+                      <div className="font-medium text-slate-900">{c.name}</div>
+                      <div className="text-slate-500">{c.botanical_family}</div>
+                    </td>
+                    <td className="py-2.5 px-3 font-sans text-slate-700">
+                      {c.is_cover_crop ? 'Overwinter Cover' : c.is_legume ? 'Legume Cash' : 'Cash Crop'}
+                    </td>
+                    {selectedField && (
+                      <td className="py-2.5 px-3 font-sans">
+                        {c.is_cover_crop ? (
+                          <span className="text-emerald-700 font-medium">Auto-Trigger</span>
+                        ) : gate ? (
+                          gate.passed ? (
+                            <span className="text-emerald-700 font-medium">Passed</span>
+                          ) : (
+                            <span className="text-rose-700 font-medium">
+                              Eliminated
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-amber-700">Pending Analysis</span>
+                        )}
+                      </td>
+                    )}
+                    <td className="py-2.5 px-3 text-slate-800">
+                      {c.ph_min.toFixed(1)}–{c.ph_max.toFixed(1)}
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-800">{c.max_salinity_dsm.toFixed(1)} dS/m</td>
+                    <td className="py-2.5 px-3 text-slate-800">{c.gdd_required} °C·d</td>
+                    <td className="py-2.5 px-3 text-slate-800">{c.frost_free_days_min}d (+14d)</td>
+                    <td className="py-2.5 px-3 text-slate-800">{c.min_rotation_break_years} yr</td>
+                    <td className="py-2.5 px-3 text-slate-800">{c.water_demand_mm} mm</td>
+                    <td className="py-2.5 px-3 text-slate-800">
+                      {c.n_balance_lbs_acre >= 0 ? `+${c.n_balance_lbs_acre}` : c.n_balance_lbs_acre} lb
+                      {c.n_credit_provided_lbs_acre > 0 ? ` (+${c.n_credit_provided_lbs_acre} credit)` : ''}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -189,18 +254,20 @@ export const ClimateTelemetryView: React.FC<{
   const activePoint: ClimateTelemetry['monthly_series'][number] | null =
     hoveredMonthIdx !== null ? series[hoveredMonthIdx] : null;
 
+  const areaHa = field.acreage / 2.47105381;
+
   return (
     <div className="space-y-6">
       <section className="border border-slate-200 bg-white rounded-lg">
         <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 border-b border-slate-200">
           <div>
             <h2 className="text-base font-semibold text-slate-900">
-              NASA POWER Meteorological Telemetry & 0.5° Grid Cache
+              NASA POWER Meteorological Telemetry · {field.name}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Source: {telemetry.data_source} · Grid Cell ({telemetry.grid_lat.toFixed(1)}°,{' '}
-              {telemetry.grid_lon.toFixed(1)}°) · Cache Key {telemetry.cache_key} ·{' '}
-              {telemetry.cache_hit ? '24h Cache Hit' : 'Live Fetch'} · ET₀ Method: {telemetry.et0_method}
+              {field.location_label} ({field.centroid_lat.toFixed(4)}°N, {field.centroid_lon.toFixed(4)}°E ·{' '}
+              {areaHa.toFixed(2)} ha / {field.acreage.toFixed(1)} ac) · Source: {telemetry.data_source} · 0.5° Grid ({telemetry.grid_lat.toFixed(1)}°,{' '}
+              {telemetry.grid_lon.toFixed(1)}°) · Cache {telemetry.cache_key} ({telemetry.cache_hit ? 'Cache Hit' : 'Live Fetch'}) · {telemetry.et0_method}
             </p>
           </div>
           <button
@@ -214,7 +281,7 @@ export const ClimateTelemetryView: React.FC<{
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-6 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 border-b border-slate-200">
+        <div className="grid grid-cols-2 sm:grid-cols-7 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 border-b border-slate-200">
           <div className="p-4">
             <div className="text-xs text-slate-500">85th-Pct GDD</div>
             <div className="mt-1 text-xl font-semibold font-mono tabular-nums text-slate-900">
@@ -248,6 +315,13 @@ export const ClimateTelemetryView: React.FC<{
             <div className="mt-1 text-xl font-semibold font-mono tabular-nums text-slate-900">
               {telemetry.mean_et0_mm_day.toFixed(2)}
               <span className="text-xs font-normal text-slate-400 ml-1">mm/d</span>
+            </div>
+          </div>
+          <div className="p-4">
+            <div className="text-xs text-slate-500">Mean T_min / T_max</div>
+            <div className="mt-1 text-base font-semibold font-mono tabular-nums text-slate-900">
+              {telemetry.mean_t_min_c.toFixed(1)}° / {telemetry.mean_t_max_c.toFixed(1)}°
+              <span className="text-xs font-normal text-slate-400 ml-1">C</span>
             </div>
           </div>
           <div className="p-4">
@@ -349,13 +423,41 @@ export const ClimateTelemetryView: React.FC<{
             ))}
           </svg>
         </div>
+
+        {/* 12-Month Breakdown Table for Selected Field */}
+        <div className="border-t border-slate-200 overflow-x-auto">
+          <table className="w-full text-xs text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                <th className="py-2 px-4 font-semibold">Month</th>
+                <th className="py-2 px-3 font-semibold text-right">T_min (°C)</th>
+                <th className="py-2 px-3 font-semibold text-right">T_max (°C)</th>
+                <th className="py-2 px-3 font-semibold text-right">Precip (mm)</th>
+                <th className="py-2 px-3 font-semibold text-right">ET₀ (mm)</th>
+                <th className="py-2 px-4 font-semibold text-right">GDD (°C·d)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 font-mono tabular-nums">
+              {series.map((m) => (
+                <tr key={`row-${m.month}`} className="hover:bg-slate-50/70">
+                  <td className="py-2 px-4 font-sans font-medium text-slate-900">{m.month}</td>
+                  <td className="py-2 px-3 text-right text-slate-700">{m.t_min_c.toFixed(1)}</td>
+                  <td className="py-2 px-3 text-right text-slate-700">{m.t_max_c.toFixed(1)}</td>
+                  <td className="py-2 px-3 text-right text-emerald-700 font-medium">{m.precip_mm}</td>
+                  <td className="py-2 px-3 text-right text-amber-700">{m.et0_mm}</td>
+                  <td className="py-2 px-4 text-right text-slate-900">{m.gdd_c}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   );
 };
 
 /* -------------------------------------------------------------------------- */
-/* 3. Dexie.js IndexedDB Offline Activity Log View                            */
+/* 3. Dexie.js IndexedDB & Firestore Activity Log View                        */
 /* -------------------------------------------------------------------------- */
 export const ActivityLogView: React.FC<{
   field: FieldRecord;
@@ -364,15 +466,25 @@ export const ActivityLogView: React.FC<{
   onLogActivity: (entry: Omit<ActivityLogEntry, 'id' | 'synced' | 'created_at'>) => Promise<void>;
   onSyncPending: () => Promise<void>;
 }> = ({ field, crops, activities, onLogActivity, onSyncPending }) => {
+  const defaultCropForField =
+    crops.find((c) => c.id === field.previous_crops[0])?.name ||
+    crops[0]?.name ||
+    'Corn (Maize)';
+
   const [activityType, setActivityType] =
     useState<ActivityLogEntry['activity_type']>('Planting');
-  const [cropName, setCropName] = useState(crops[0]?.name || 'Corn (Maize)');
+  const [cropName, setCropName] = useState(defaultCropForField);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [nApplied, setNApplied] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    setCropName(defaultCropForField);
+  }, [field.id, defaultCropForField]);
+
   const pendingCount = activities.filter((a) => !a.synced).length;
+  const areaHa = field.acreage / 2.47105381;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -396,9 +508,11 @@ export const ActivityLogView: React.FC<{
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <section className="border border-slate-200 bg-white rounded-lg p-5">
-        <h2 className="text-sm font-semibold text-slate-900">Log Field Operation</h2>
+        <h2 className="text-sm font-semibold text-slate-900">
+          Log Field Operation · {field.name}
+        </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Persists immediately to IndexedDB via Dexie.js and syncs with the Cosmic Crisp backend when online.
+          Persists to Cloud Firestore (when signed in) and IndexedDB offline storage.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-3.5">
@@ -497,7 +611,7 @@ export const ActivityLogView: React.FC<{
               Field Activity History · {field.name}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              {activities.length} logged operations · {pendingCount} queued offline
+              {field.location_label} · {areaHa.toFixed(2)} ha ({field.acreage.toFixed(1)} ac) · Prior Crop: {defaultCropForField} · {activities.length} logged operations · {pendingCount} queued offline
             </p>
           </div>
           {pendingCount > 0 && (

@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import json
 import uuid
 from typing import Any, Dict, Optional
@@ -65,6 +66,7 @@ async def _serialize_field(field: Field, telemetry: Dict[str, Any]) -> Dict[str,
             "is_manual_override": soil.is_manual_override,
             "mukey": soil.mukey,
             "updated_at": soil.updated_at.isoformat() if soil.updated_at else "",
+            "om_history": soil.om_history or [],
         },
         "telemetry": telemetry,
         "created_at": field.created_at.isoformat() if field.created_at else "",
@@ -106,6 +108,7 @@ async def create_field(payload: FieldCreateRequest, db: AsyncSession = Depends(g
         acreage=acres,
         previous_crops=payload.previous_crops or ["corn"],
     )
+    current_year = datetime.now(timezone.utc).year
     soil_row = SoilProfile(
         field_id=field_id,
         ph=soil_dict["ph"],
@@ -119,6 +122,16 @@ async def create_field(payload: FieldCreateRequest, db: AsyncSession = Depends(g
         source=soil_dict["source"],
         is_manual_override=False,
         mukey=soil_dict["mukey"],
+        om_history=[
+            {
+                "season_year": current_year,
+                "season_label": f"Fall {current_year}",
+                "organic_matter_pct": soil_dict["organic_matter_pct"],
+                "ph": soil_dict["ph"],
+                "crop_grown": (payload.previous_crops or ["corn"])[0],
+                "source": soil_dict["source"],
+            }
+        ],
     )
     db.add(field_row)
     db.add(soil_row)
@@ -147,6 +160,26 @@ async def override_field_soil(
     soil.irrigated = payload.irrigated
     soil.source = "Manual Lab Soil Test Override"
     soil.is_manual_override = True
+    current_year = datetime.now(timezone.utc).year
+    history = list(soil.om_history or [])
+    new_point = {
+        "season_year": current_year,
+        "season_label": f"Fall {current_year}",
+        "organic_matter_pct": soil.organic_matter_pct,
+        "ph": soil.ph,
+        "crop_grown": (field.previous_crops or ["Lab Core Sample"])[0],
+        "source": "Manual Lab Override",
+    }
+    replaced = False
+    for idx, item in enumerate(history):
+        if item.get("season_year") == current_year:
+            history[idx] = new_point
+            replaced = True
+            break
+    if not replaced:
+        history.append(new_point)
+    history.sort(key=lambda x: x.get("season_year", 0))
+    soil.om_history = history
     if payload.previous_crops:
         field.previous_crops = payload.previous_crops
 
