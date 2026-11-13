@@ -1,0 +1,6 @@
+{
+  "name": "Cosmic Crisp",
+  "description": "Precision agriculture and multi-year crop rotation decision-support platform powered by NASA POWER, USDA NRCS Soil Data Access, and a 4-stage agronomic optimization engine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

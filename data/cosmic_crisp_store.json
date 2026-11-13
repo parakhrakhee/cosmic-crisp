@@ -1,0 +1,539 @@
+{
+  "fields": [
+    {
+      "id": "field-story-north",
+      "name": "Story County North Quarter",
+      "location_label": "Ames, IA · Midwest Corn Belt",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -93.642,
+              42.041
+            ],
+            [
+              -93.632,
+              42.041
+            ],
+            [
+              -93.632,
+              42.048
+            ],
+            [
+              -93.642,
+              42.048
+            ],
+            [
+              -93.642,
+              42.041
+            ]
+          ]
+        ]
+      },
+      "centroid_lat": 42.0445,
+      "centroid_lon": -93.637,
+      "acreage": 158.4,
+      "previous_crops": [
+        "corn",
+        "soybeans"
+      ],
+      "soil": {
+        "ph": 6.4,
+        "organic_matter_pct": 4.1,
+        "soil_texture": "Clarion-Nicollet Loam",
+        "cec_meq": 21.8,
+        "salinity_dsm": 0.4,
+        "mean_slope_pct": 2.3,
+        "smap_rootzone_moisture": 58,
+        "irrigated": false,
+        "source": "USDA NRCS SSURGO",
+        "is_manual_override": false,
+        "mukey": "405612",
+        "updated_at": "2026-11-01T10:00:00.000Z"
+      },
+      "telemetry": {
+        "grid_lat": 42,
+        "grid_lon": -93.5,
+        "cache_key": "42.0_-93.5",
+        "cache_hit": true,
+        "cached_at": "2026-11-12T12:00:00.000Z",
+        "expires_at": "2026-11-13T12:00:00.000Z",
+        "data_source": "NASA POWER API",
+        "gdd_85th_percentile": 1620,
+        "frost_free_days": 156,
+        "annual_precip_mm": 892,
+        "growing_season_precip_mm": 645,
+        "mean_et0_mm_day": 3.45,
+        "et0_method": "FAO-56 Hargreaves Computed",
+        "mean_t_min_c": 4.2,
+        "mean_t_max_c": 15.6,
+        "elevation_m": 287,
+        "monthly_series": [
+          {
+            "month": "Jan",
+            "t_min_c": -11.2,
+            "t_max_c": -1.8,
+            "precip_mm": 24,
+            "et0_mm": 18,
+            "gdd_c": 0
+          },
+          {
+            "month": "Feb",
+            "t_min_c": -8.6,
+            "t_max_c": 1.4,
+            "precip_mm": 28,
+            "et0_mm": 26,
+            "gdd_c": 0
+          },
+          {
+            "month": "Mar",
+            "t_min_c": -2.1,
+            "t_max_c": 8.8,
+            "precip_mm": 52,
+            "et0_mm": 58,
+            "gdd_c": 14
+          },
+          {
+            "month": "Apr",
+            "t_min_c": 3.9,
+            "t_max_c": 16.2,
+            "precip_mm": 88,
+            "et0_mm": 94,
+            "gdd_c": 82
+          },
+          {
+            "month": "May",
+            "t_min_c": 10.4,
+            "t_max_c": 22.8,
+            "precip_mm": 118,
+            "et0_mm": 135,
+            "gdd_c": 215
+          },
+          {
+            "month": "Jun",
+            "t_min_c": 15.8,
+            "t_max_c": 27.6,
+            "precip_mm": 129,
+            "et0_mm": 162,
+            "gdd_c": 348
+          },
+          {
+            "month": "Jul",
+            "t_min_c": 17.9,
+            "t_max_c": 29.4,
+            "precip_mm": 114,
+            "et0_mm": 171,
+            "gdd_c": 412
+          },
+          {
+            "month": "Aug",
+            "t_min_c": 16.6,
+            "t_max_c": 28.3,
+            "precip_mm": 108,
+            "et0_mm": 148,
+            "gdd_c": 375
+          },
+          {
+            "month": "Sep",
+            "t_min_c": 11.4,
+            "t_max_c": 24.1,
+            "precip_mm": 86,
+            "et0_mm": 104,
+            "gdd_c": 236
+          },
+          {
+            "month": "Oct",
+            "t_min_c": 4.6,
+            "t_max_c": 16.8,
+            "precip_mm": 64,
+            "et0_mm": 62,
+            "gdd_c": 78
+          },
+          {
+            "month": "Nov",
+            "t_min_c": -1.9,
+            "t_max_c": 8.2,
+            "precip_mm": 48,
+            "et0_mm": 30,
+            "gdd_c": 8
+          },
+          {
+            "month": "Dec",
+            "t_min_c": -8.4,
+            "t_max_c": 0.4,
+            "precip_mm": 33,
+            "et0_mm": 18,
+            "gdd_c": 0
+          }
+        ]
+      },
+      "created_at": "2026-11-01T10:00:00.000Z",
+      "updated_at": "2026-11-12T12:00:00.000Z"
+    },
+    {
+      "id": "field-palouse-ridge",
+      "name": "Palouse Ridge Slope B",
+      "location_label": "Pullman, WA · Dryland Palouse Hills",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -117.185,
+              46.725
+            ],
+            [
+              -117.172,
+              46.725
+            ],
+            [
+              -117.172,
+              46.733
+            ],
+            [
+              -117.185,
+              46.733
+            ],
+            [
+              -117.185,
+              46.725
+            ]
+          ]
+        ]
+      },
+      "centroid_lat": 46.729,
+      "centroid_lon": -117.1785,
+      "acreage": 217.6,
+      "previous_crops": [
+        "winter_wheat",
+        "canola"
+      ],
+      "soil": {
+        "ph": 5.9,
+        "organic_matter_pct": 3.2,
+        "soil_texture": "Palouse Silt Loam",
+        "cec_meq": 18.4,
+        "salinity_dsm": 0.3,
+        "mean_slope_pct": 9.4,
+        "smap_rootzone_moisture": 26,
+        "irrigated": false,
+        "source": "USDA NRCS SSURGO",
+        "is_manual_override": false,
+        "mukey": "188420",
+        "updated_at": "2026-11-02T14:20:00.000Z"
+      },
+      "telemetry": {
+        "grid_lat": 46.5,
+        "grid_lon": -117,
+        "cache_key": "46.5_-117.0",
+        "cache_hit": true,
+        "cached_at": "2026-11-12T12:00:00.000Z",
+        "expires_at": "2026-11-13T12:00:00.000Z",
+        "data_source": "NASA POWER API",
+        "gdd_85th_percentile": 1185,
+        "frost_free_days": 132,
+        "annual_precip_mm": 525,
+        "growing_season_precip_mm": 245,
+        "mean_et0_mm_day": 3.1,
+        "et0_method": "FAO-56 Hargreaves Computed",
+        "mean_t_min_c": 2.8,
+        "mean_t_max_c": 14.5,
+        "elevation_m": 742,
+        "monthly_series": [
+          {
+            "month": "Jan",
+            "t_min_c": -4.2,
+            "t_max_c": 1.8,
+            "precip_mm": 68,
+            "et0_mm": 18,
+            "gdd_c": 0
+          },
+          {
+            "month": "Feb",
+            "t_min_c": -2.9,
+            "t_max_c": 4.5,
+            "precip_mm": 54,
+            "et0_mm": 28,
+            "gdd_c": 0
+          },
+          {
+            "month": "Mar",
+            "t_min_c": -0.4,
+            "t_max_c": 9.2,
+            "precip_mm": 52,
+            "et0_mm": 54,
+            "gdd_c": 6
+          },
+          {
+            "month": "Apr",
+            "t_min_c": 2.4,
+            "t_max_c": 14.1,
+            "precip_mm": 44,
+            "et0_mm": 88,
+            "gdd_c": 42
+          },
+          {
+            "month": "May",
+            "t_min_c": 5.8,
+            "t_max_c": 19.2,
+            "precip_mm": 46,
+            "et0_mm": 126,
+            "gdd_c": 118
+          },
+          {
+            "month": "Jun",
+            "t_min_c": 9.1,
+            "t_max_c": 23.6,
+            "precip_mm": 36,
+            "et0_mm": 152,
+            "gdd_c": 204
+          },
+          {
+            "month": "Jul",
+            "t_min_c": 11.4,
+            "t_max_c": 28.9,
+            "precip_mm": 16,
+            "et0_mm": 178,
+            "gdd_c": 312
+          },
+          {
+            "month": "Aug",
+            "t_min_c": 11,
+            "t_max_c": 28.5,
+            "precip_mm": 19,
+            "et0_mm": 158,
+            "gdd_c": 298
+          },
+          {
+            "month": "Sep",
+            "t_min_c": 6.9,
+            "t_max_c": 22.8,
+            "precip_mm": 26,
+            "et0_mm": 102,
+            "gdd_c": 168
+          },
+          {
+            "month": "Oct",
+            "t_min_c": 2.2,
+            "t_max_c": 14.9,
+            "precip_mm": 42,
+            "et0_mm": 56,
+            "gdd_c": 44
+          },
+          {
+            "month": "Nov",
+            "t_min_c": -1.1,
+            "t_max_c": 6.4,
+            "precip_mm": 64,
+            "et0_mm": 24,
+            "gdd_c": 2
+          },
+          {
+            "month": "Dec",
+            "t_min_c": -4.1,
+            "t_max_c": 1.9,
+            "precip_mm": 58,
+            "et0_mm": 16,
+            "gdd_c": 0
+          }
+        ]
+      },
+      "created_at": "2026-11-02T14:20:00.000Z",
+      "updated_at": "2026-11-12T12:00:00.000Z"
+    },
+    {
+      "id": "field-san-joaquin",
+      "name": "San Joaquin Irrigated Parcel 4",
+      "location_label": "Fresno, CA · Central Valley",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -119.812,
+              36.742
+            ],
+            [
+              -119.802,
+              36.742
+            ],
+            [
+              -119.802,
+              36.749
+            ],
+            [
+              -119.812,
+              36.749
+            ],
+            [
+              -119.812,
+              36.742
+            ]
+          ]
+        ]
+      },
+      "centroid_lat": 36.7455,
+      "centroid_lon": -119.807,
+      "acreage": 171.2,
+      "previous_crops": [
+        "sunflower_potato",
+        "winter_wheat"
+      ],
+      "soil": {
+        "ph": 7.5,
+        "organic_matter_pct": 1.9,
+        "soil_texture": "Hanford Sandy Loam",
+        "cec_meq": 12.6,
+        "salinity_dsm": 2.1,
+        "mean_slope_pct": 0.8,
+        "smap_rootzone_moisture": 44,
+        "irrigated": true,
+        "source": "USDA NRCS SSURGO",
+        "is_manual_override": false,
+        "mukey": "742091",
+        "updated_at": "2026-11-03T09:15:00.000Z"
+      },
+      "telemetry": {
+        "grid_lat": 36.5,
+        "grid_lon": -120,
+        "cache_key": "36.5_-120.0",
+        "cache_hit": true,
+        "cached_at": "2026-11-12T12:00:00.000Z",
+        "expires_at": "2026-11-13T12:00:00.000Z",
+        "data_source": "NASA POWER API",
+        "gdd_85th_percentile": 2450,
+        "frost_free_days": 278,
+        "annual_precip_mm": 288,
+        "growing_season_precip_mm": 92,
+        "mean_et0_mm_day": 4.85,
+        "et0_method": "FAO-56 Hargreaves Computed",
+        "mean_t_min_c": 10.6,
+        "mean_t_max_c": 25.1,
+        "elevation_m": 91,
+        "monthly_series": [
+          {
+            "month": "Jan",
+            "t_min_c": 3.8,
+            "t_max_c": 12.9,
+            "precip_mm": 56,
+            "et0_mm": 36,
+            "gdd_c": 18
+          },
+          {
+            "month": "Feb",
+            "t_min_c": 5.4,
+            "t_max_c": 16.4,
+            "precip_mm": 52,
+            "et0_mm": 54,
+            "gdd_c": 45
+          },
+          {
+            "month": "Mar",
+            "t_min_c": 7.8,
+            "t_max_c": 19.8,
+            "precip_mm": 48,
+            "et0_mm": 92,
+            "gdd_c": 112
+          },
+          {
+            "month": "Apr",
+            "t_min_c": 10.2,
+            "t_max_c": 23.6,
+            "precip_mm": 24,
+            "et0_mm": 132,
+            "gdd_c": 198
+          },
+          {
+            "month": "May",
+            "t_min_c": 13.8,
+            "t_max_c": 28.4,
+            "precip_mm": 11,
+            "et0_mm": 178,
+            "gdd_c": 318
+          },
+          {
+            "month": "Jun",
+            "t_min_c": 17.1,
+            "t_max_c": 33.2,
+            "precip_mm": 3,
+            "et0_mm": 208,
+            "gdd_c": 416
+          },
+          {
+            "month": "Jul",
+            "t_min_c": 19.4,
+            "t_max_c": 36.4,
+            "precip_mm": 1,
+            "et0_mm": 224,
+            "gdd_c": 472
+          },
+          {
+            "month": "Aug",
+            "t_min_c": 18.6,
+            "t_max_c": 35.5,
+            "precip_mm": 1,
+            "et0_mm": 202,
+            "gdd_c": 458
+          },
+          {
+            "month": "Sep",
+            "t_min_c": 15.8,
+            "t_max_c": 32.1,
+            "precip_mm": 4,
+            "et0_mm": 154,
+            "gdd_c": 382
+          },
+          {
+            "month": "Oct",
+            "t_min_c": 11.2,
+            "t_max_c": 25.8,
+            "precip_mm": 16,
+            "et0_mm": 104,
+            "gdd_c": 248
+          },
+          {
+            "month": "Nov",
+            "t_min_c": 6.2,
+            "t_max_c": 18.2,
+            "precip_mm": 28,
+            "et0_mm": 52,
+            "gdd_c": 78
+          },
+          {
+            "month": "Dec",
+            "t_min_c": 3.4,
+            "t_max_c": 12.6,
+            "precip_mm": 44,
+            "et0_mm": 32,
+            "gdd_c": 14
+          }
+        ]
+      },
+      "created_at": "2026-11-03T09:15:00.000Z",
+      "updated_at": "2026-11-12T12:00:00.000Z"
+    }
+  ],
+  "activities": [
+    {
+      "id": "act-1",
+      "field_id": "field-story-north",
+      "activity_type": "Soil Sample",
+      "crop_name": "Corn (Maize)",
+      "date": "2026-10-18",
+      "notes": "Fall 0–30 cm composite core pull across north terrace; confirmed pH 6.4 and OM 4.1%.",
+      "synced": true,
+      "created_at": "2026-10-18T16:30:00.000Z"
+    },
+    {
+      "id": "act-2",
+      "field_id": "field-palouse-ridge",
+      "activity_type": "Cover Crop Termination",
+      "crop_name": "Winter Cereal Rye",
+      "date": "2026-04-22",
+      "notes": "Crimped rye cover ahead of spring seeding; zero rill erosion observed along 9.4% slope.",
+      "synced": true,
+      "created_at": "2026-04-22T14:00:00.000Z"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@layer base {
+  :root {
+    --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-sans: 'DM Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #F8FAFC;
+    color: #0F172A;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+  }
+
+  .font-mono,
+  .tabular-nums {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom Leaflet overrides for clean scientific precision aesthetic */
+.leaflet-container {
+  font-family: var(--font-sans);
+  background: #E2E8F0;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  color: #475569 !important;
+}
